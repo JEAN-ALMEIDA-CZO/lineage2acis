@@ -1,0 +1,1038 @@
+package com.l2jmega.gameserver.handler.itemhandlers.vip;
+
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.logging.Logger;
+
+import com.l2jmega.gameserver.handler.IItemHandler;
+import com.l2jmega.gameserver.instancemanager.VipManager;
+import com.l2jmega.gameserver.model.actor.Playable;
+import com.l2jmega.gameserver.model.actor.instance.Player;
+import com.l2jmega.gameserver.model.item.instance.ItemInstance;
+import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
+
+/**
+ * VIP de 24 horas (1 dia) - concede exatamente 24 horas de VIP a partir do uso do item.
+ */
+public class Vip24h implements IItemHandler {
+
+    protected static final Logger LOGGER = Logger.getLogger(Vip24h.class.getName());
+    private static final int VIP_HOURS = 24;
+
+    @Override
+    public void useItem(Playable playable, ItemInstance item, boolean forceUse) {
+        if (!(playable instanceof Player)) return;
+
+        Player activeChar = (Player) playable;
+
+        if (activeChar.isInOlympiadMode()) {
+            activeChar.sendMessage("SYS: You cannot do this during the Olympiad.");
+            return;
+        }
+
+        if (activeChar.isVip()) {
+            activeChar.sendMessage("SYS: You are already under VIP status.");
+            return;
+        }
+
+        // Consume the item
+        playable.destroyItem("Consume", item.getObjectId(), 1, null, false);
+
+        long now = System.currentTimeMillis();
+        long currentVipEnd = Math.max(now, VipManager.getInstance().getVipDuration(activeChar.getObjectId()));
+
+        // Add 24 hours
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(currentVipEnd);
+        calendar.add(Calendar.HOUR_OF_DAY, VIP_HOURS);
+        long newVipEnd = calendar.getTimeInMillis();
+
+        if (VipManager.getInstance().hasVipPrivileges(activeChar.getObjectId())) {
+            VipManager.getInstance().updateVip(activeChar.getObjectId(), newVipEnd);
+        } else {
+            VipManager.getInstance().addVip(activeChar.getObjectId(), newVipEnd);
+        }
+
+        String formattedDate = new SimpleDateFormat("dd MMM, HH:mm").format(new Date(newVipEnd));
+        activeChar.sendPacket(new ExShowScreenMessage("Your VIP status will expire on " + formattedDate + ".", 10000));
+        activeChar.sendMessage("Your VIP status will expire on " + formattedDate + ".");
+    }
+
+}
+
+
+package com.l2jmega.gameserver.handler.itemhandlers.vip;
+
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.logging.Logger;
+
+import com.l2jmega.gameserver.handler.IItemHandler;
+import com.l2jmega.gameserver.instancemanager.VipManager;
+import com.l2jmega.gameserver.model.actor.Playable;
+import com.l2jmega.gameserver.model.actor.instance.Player;
+import com.l2jmega.gameserver.model.item.instance.ItemInstance;
+import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
+
+/**
+ * VIP for 15 days - grants exactly 15 days of VIP from the moment the item is used.
+ */
+public class Vip15days implements IItemHandler {
+
+    protected static final Logger LOGGER = Logger.getLogger(Vip15days.class.getName());
+    private static final int VIP_DAYS = 15;
+
+    @Override
+    public void useItem(Playable playable, ItemInstance item, boolean forceUse) {
+        if (!(playable instanceof Player)) {
+            return;
+        }
+
+        Player activeChar = (Player) playable;
+
+        if (activeChar.isInOlympiadMode()) {
+            activeChar.sendMessage("SYS: You cannot use this item during the Olympiad.");
+            return;
+        }
+
+        if (activeChar.isVip()) {
+            activeChar.sendMessage("SYS: You are already under VIP status.");
+            return;
+        }
+
+        // Consume the VIP item
+        playable.destroyItem("Consume", item.getObjectId(), 1, null, false);
+
+        // Base time: now or current VIP expiration, whichever is later
+        long now = System.currentTimeMillis();
+        long currentVipEnd = Math.max(now, VipManager.getInstance().getVipDuration(activeChar.getObjectId()));
+
+        // Add VIP days
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(currentVipEnd);
+        calendar.add(Calendar.DAY_OF_MONTH, VIP_DAYS);
+        long newVipEnd = calendar.getTimeInMillis();
+
+        // Apply new VIP time
+        VipManager vipManager = VipManager.getInstance();
+        if (vipManager.hasVipPrivileges(activeChar.getObjectId())) {
+            vipManager.updateVip(activeChar.getObjectId(), newVipEnd);
+        } else {
+            vipManager.addVip(activeChar.getObjectId(), newVipEnd);
+        }
+
+        // Notify the player
+        String formattedDate = new SimpleDateFormat("dd MMM, HH:mm").format(new Date(newVipEnd));
+        String message = "Your VIP status expires at " + formattedDate + ".";
+        activeChar.sendPacket(new ExShowScreenMessage(message, 10000));
+        activeChar.sendMessage(message);
+    }
+
+}
+
+
+package com.l2jmega.gameserver.handler.itemhandlers.vip;
+
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.logging.Logger;
+
+import com.l2jmega.gameserver.handler.IItemHandler;
+import com.l2jmega.gameserver.instancemanager.VipManager;
+import com.l2jmega.gameserver.model.actor.Playable;
+import com.l2jmega.gameserver.model.actor.instance.Player;
+import com.l2jmega.gameserver.model.item.instance.ItemInstance;
+import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
+
+/**
+ * VIP de 30 dias - concede 30 dias exatos de VIP a partir do momento do uso.
+ * @author MeGaPacK
+ */
+public class Vip30days implements IItemHandler {
+
+    protected static final Logger LOGGER = Logger.getLogger(Vip30days.class.getName());
+    private static final int VIP_DAYS = 30;
+
+    @Override
+    public void useItem(Playable playable, ItemInstance item, boolean forceUse) {
+        if (!(playable instanceof Player)) {
+            return;
+        }
+
+        Player activeChar = (Player) playable;
+
+        // Check if the player is in Olympiad mode
+        if (activeChar.isInOlympiadMode()) {
+            activeChar.sendMessage("SYS: You cannot use this item during the Olympiad.");
+            return;
+        }
+
+        // Check if the player already has VIP status
+        if (activeChar.isVip()) {
+            activeChar.sendMessage("SYS: You already have VIP status.");
+            return;
+        }
+
+        // Consume the VIP item
+        if (!playable.destroyItem("Consume", item.getObjectId(), 1, null, false)) {
+            activeChar.sendMessage("SYS: Failed to consume the item.");
+            return;
+        }
+
+        // Define the base date (now or current VIP end, whichever is greater)
+        long now = System.currentTimeMillis();
+        long currentVipEnd = Math.max(now, VipManager.getInstance().getVipDuration(activeChar.getObjectId()));
+
+        // Add days to the calendar
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(currentVipEnd);
+        calendar.add(Calendar.DAY_OF_MONTH, VIP_DAYS);
+        long newVipEnd = calendar.getTimeInMillis();
+
+        // Apply the new VIP duration
+        VipManager vipManager = VipManager.getInstance();
+        int objectId = activeChar.getObjectId();
+
+        if (vipManager.hasVipPrivileges(objectId)) {
+            vipManager.updateVip(objectId, newVipEnd);
+        } else {
+            vipManager.addVip(objectId, newVipEnd);
+        }
+
+        // Send the formatted expiration date to the player
+        String formattedDate = new SimpleDateFormat("dd MMM, HH:mm").format(new Date(newVipEnd));
+        String message = "Your VIP status will expire on " + formattedDate + ".";
+        activeChar.sendPacket(new ExShowScreenMessage(message, 10000));
+        activeChar.sendMessage("SYS: " + message);
+    }
+}
+
+package com.l2jmega.gameserver.handler.itemhandlers.vip;
+
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.logging.Logger;
+
+import com.l2jmega.gameserver.handler.IItemHandler;
+import com.l2jmega.gameserver.instancemanager.VipManager;
+import com.l2jmega.gameserver.model.actor.Playable;
+import com.l2jmega.gameserver.model.actor.instance.Player;
+import com.l2jmega.gameserver.model.item.instance.ItemInstance;
+import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
+
+/**
+ * VIP de 7 dias - concede 7 dias exatos de VIP a partir do momento do uso.
+ */
+public class Vip7days implements IItemHandler {
+
+    protected static final Logger LOGGER = Logger.getLogger(Vip7days.class.getName());
+    private static final int VIP_DAYS = 7; // 7 days of VIP
+
+    @Override
+    public void useItem(Playable playable, ItemInstance item, boolean forceUse) {
+        if (!(playable instanceof Player)) return;
+
+        Player activeChar = (Player) playable;
+
+        if (activeChar.isInOlympiadMode()) {
+            activeChar.sendMessage("SYS: You cannot do this during the Olympiad.");
+            return;
+        }
+
+        if (activeChar.isVip()) {
+            activeChar.sendMessage("SYS: You are already VIP.");
+            return;
+        }
+
+        // Consumes the item
+        playable.destroyItem("Consume", item.getObjectId(), 1, null, false);
+
+        // Gets the current time and VIP expiration time
+        long now = System.currentTimeMillis();
+        long currentVipEnd = Math.max(now, VipManager.getInstance().getVipDuration(activeChar.getObjectId()));
+
+        // Adds 7 days in milliseconds (7 * 24 * 60 * 60 * 1000)
+        long additionalTime = VIP_DAYS * 24L * 60 * 60 * 1000;
+        long newVipEnd = currentVipEnd + additionalTime;
+
+        // Updates or adds VIP status for the player
+        if (VipManager.getInstance().hasVipPrivileges(activeChar.getObjectId())) {
+            VipManager.getInstance().updateVip(activeChar.getObjectId(), newVipEnd);
+        } else {
+            VipManager.getInstance().addVip(activeChar.getObjectId(), newVipEnd);
+        }
+
+        // Formats and shows the expiration date to the player
+        String formattedDate = new SimpleDateFormat("dd MMM, HH:mm").format(new Date(newVipEnd));
+        activeChar.sendPacket(new ExShowScreenMessage("Your VIP status expires at " + formattedDate + ".", 10000));
+        activeChar.sendMessage("Your VIP status expires at " + formattedDate + ".");
+    }
+}
+
+
+package com.l2jmega.gameserver.instancemanager;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
+import java.util.logging.Logger;
+
+import com.l2jmega.commons.concurrent.ThreadPool;
+import com.l2jmega.L2DatabaseFactory;
+import com.l2jmega.gameserver.model.World;
+import com.l2jmega.gameserver.model.actor.instance.Player;
+import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
+
+/**
+ * @author rapfersan92
+ */
+public class VipManager
+{
+    private static final Logger _log = Logger.getLogger(VipManager.class.getName());
+
+    private final Map<Integer, Long> _vips;
+    protected final Map<Integer, Long> _vipsTask;
+    private ScheduledFuture<?> _scheduler;
+
+    public static VipManager getInstance()
+    {
+        return SingletonHolder._instance;
+    }
+
+    protected VipManager()
+    {
+        _vips = new ConcurrentHashMap<>();
+        _vipsTask = new ConcurrentHashMap<>();
+        _scheduler = ThreadPool.scheduleAtFixedRate(new VipTask(), 1000, 1000);
+        load();
+    }
+
+    public void reload()
+    {
+        _vips.clear();
+        _vipsTask.clear();
+        if (_scheduler != null)
+            _scheduler.cancel(true);
+        _scheduler = ThreadPool.scheduleAtFixedRate(new VipTask(), 1000, 1000);
+        load();
+    }
+
+    public void load()
+    {
+        try (Connection con = L2DatabaseFactory.getInstance().getConnection())
+        {
+            PreparedStatement statement = con.prepareStatement("SELECT objectId, duration FROM character_vip ORDER BY objectId");
+            ResultSet rs = statement.executeQuery();
+            while (rs.next())
+                _vips.put(rs.getInt("objectId"), rs.getLong("duration"));
+            rs.close();
+            statement.close();
+        }
+        catch (Exception e)
+        {
+            _log.warning("Exception: VipManager load: " + e.getMessage());
+        }
+
+        _log.info("VipManager: Loaded " + _vips.size() + " characters with vip privileges.");
+    }
+
+//    public void addVip(int objectId, long duration)
+//    {
+//        _vips.put(objectId, duration);
+//        _vipsTask.put(objectId, duration);
+//        addVipPrivileges(objectId, true);
+//
+//        try (Connection con = L2DatabaseFactory.getInstance().getConnection())
+//        {
+//            PreparedStatement statement = con.prepareStatement("INSERT INTO character_vip (objectId, duration) VALUES (?, ?)");
+//            statement.setInt(1, objectId);
+//            statement.setLong(2, duration);
+//            statement.execute();
+//            statement.close();
+//        }
+//        catch (Exception e)
+//        {
+//            _log.warning("Exception: VipManager addVip: " + e.getMessage());
+//        }
+//    }
+    public void addVip(int objectId, long duration)
+    {
+        if (_vips.containsKey(objectId)) {
+            // Se o VIP já estiver registrado, apenas atualize a duração
+            updateVip(objectId, duration);
+            return;
+        }
+
+        _vips.put(objectId, duration);
+        _vipsTask.put(objectId, duration);
+        addVipPrivileges(objectId, true);
+
+        try (Connection con = L2DatabaseFactory.getInstance().getConnection()) {
+            // Verificar se o VIP já existe no banco
+            try (PreparedStatement checkStmt = con.prepareStatement("SELECT objectId FROM character_vip WHERE objectId = ?")) {
+                checkStmt.setInt(1, objectId);
+                try (ResultSet rs = checkStmt.executeQuery()) {
+                    if (rs.next()) {
+                        // Se existir, atualize a duração
+                        try (PreparedStatement updateStmt = con.prepareStatement("UPDATE character_vip SET duration = ? WHERE objectId = ?")) {
+                            updateStmt.setLong(1, duration);
+                            updateStmt.setInt(2, objectId);
+                            updateStmt.execute();
+                        }
+                    } else {
+                        // Caso contrário, insira como novo
+                        try (PreparedStatement insertStmt = con.prepareStatement("INSERT INTO character_vip (objectId, duration) VALUES (?, ?)")) {
+                            insertStmt.setInt(1, objectId);
+                            insertStmt.setLong(2, duration);
+                            insertStmt.execute();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            _log.warning("Exception: VipManager addVip: " + e.getMessage());
+        }
+    }
+
+
+    public void updateVip(int objectId, long duration)
+    {
+        _vips.put(objectId, duration);
+        _vipsTask.put(objectId, duration);
+
+        // Envia uma mensagem ao jogador informando sobre a duração do VIP
+        final Player player = World.getInstance().getPlayer(objectId);
+        if (player != null)
+        {
+            player.sendMessage("Your VIP privileges are updated. You now have " + (duration - System.currentTimeMillis()) / 86400000 + " days left.");
+            player.broadcastUserInfo();
+        }
+
+        // Atualiza no banco
+        try (Connection con = L2DatabaseFactory.getInstance().getConnection())
+        {
+            PreparedStatement statement = con.prepareStatement("UPDATE character_vip SET duration = ? WHERE objectId = ?");
+            statement.setLong(1, duration);
+            statement.setInt(2, objectId);
+            statement.execute();
+            statement.close();
+        }
+        catch (Exception e)
+        {
+            _log.warning("Exception: VipManager updateVip: " + e.getMessage());
+        }
+    }
+
+    public void removeVip(int objectId)
+    {
+        _vips.remove(objectId);
+        _vipsTask.remove(objectId);
+        removeVipPrivileges(objectId, false);
+
+        try (Connection con = L2DatabaseFactory.getInstance().getConnection())
+        {
+            PreparedStatement statement = con.prepareStatement("DELETE FROM character_vip WHERE objectId = ?");
+            statement.setInt(1, objectId);
+            statement.execute();
+            statement.close();
+        }
+        catch (Exception e)
+        {
+            _log.warning("Exception: VipManager removeVip: " + e.getMessage());
+        }
+    }
+
+    public boolean hasVipPrivileges(int objectId)
+    {
+        if (_vips.containsKey(objectId))
+        {
+            long vipEndTime = _vips.get(objectId);
+            return System.currentTimeMillis() < vipEndTime; // Verifica se o VIP ainda é válido
+        }
+        return false;
+    }
+
+    public long getVipDuration(int objectId)
+    {
+        return _vips.getOrDefault(objectId, 0L);
+    }
+
+    public void addVipTask(int objectId, long duration)
+    {
+        _vipsTask.put(objectId, duration);
+    }
+
+    public void removeVipTask(int objectId)
+    {
+        _vipsTask.remove(objectId);
+    }
+
+    public void addVipPrivileges(int objectId, boolean apply)
+    {
+        final Player player = World.getInstance().getPlayer(objectId);
+        if (player != null)
+        {
+            player.setVip(true);
+            player.sendMessage("You are now a VIP member! Enjoy your privileges.");
+            player.broadcastUserInfo();
+        }
+    }
+
+    public void removeVipPrivileges(int objectId, boolean apply)
+    {
+        final Player player = World.getInstance().getPlayer(objectId);
+        if (player != null)
+        {
+            player.setVip(false);
+            player.sendMessage("Your VIP privileges have been removed.");
+            player.broadcastUserInfo();
+        }
+    }
+
+    public class VipTask implements Runnable
+    {
+        @Override
+        public final void run()
+        {
+            if (_vipsTask.isEmpty())
+                return;
+
+            for (Map.Entry<Integer, Long> entry : _vipsTask.entrySet())
+            {
+                final long duration = entry.getValue();
+                if (System.currentTimeMillis() > duration)
+                {
+                    final int objectId = entry.getKey();
+                    removeVip(objectId);
+
+                    final Player player = World.getInstance().getPlayer(objectId);
+                    if (player != null)
+                    {
+                        player.sendPacket(new ExShowScreenMessage("Your VIP privileges were removed.", 10000));
+                        player.sendMessage("Your VIP privileges have expired.");
+                    }
+                }
+            }
+        }
+    }
+
+    private static class SingletonHolder
+    {
+        protected static final VipManager _instance = new VipManager();
+    }
+}
+
+
+package com.l2jmega.gameserver.handler.itemhandlers.hero;
+
+import com.l2jmega.gameserver.handler.IItemHandler;
+import com.l2jmega.gameserver.instancemanager.HeroManager;
+import com.l2jmega.gameserver.model.actor.Playable;
+import com.l2jmega.gameserver.model.actor.instance.Player;
+import com.l2jmega.gameserver.model.item.instance.ItemInstance;
+import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
+
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.logging.Logger;
+
+/**
+ * Hero7days: Garante 7 dias de Hero, independente do dia/mês atual.
+ */
+public class Hero7days implements IItemHandler {
+
+    protected static final Logger LOGGER = Logger.getLogger(Hero7days.class.getName());
+    private static final int HERO_DAYS = 7; // Exact number of days
+
+    @Override
+    public void useItem(Playable playable, ItemInstance item, boolean forceUse) {
+        if (!(playable instanceof Player)) {
+            return;
+        }
+
+        Player activeChar = (Player) playable;
+
+        if (activeChar.isOlympiadProtection() || activeChar.isInCombat() || activeChar.isInOlympiadMode() || activeChar.isDead()) {
+            activeChar.sendMessage("SYS: You cannot use this item right now.");
+            return;
+        }
+
+        // Check if player is already a Hero
+        if (activeChar.isHero()) {
+            activeChar.sendMessage("SYS: You already have Hero status.");
+            return;
+        }
+
+        // Consume the item
+        if (!playable.destroyItem("Consume", item.getObjectId(), 1, null, false)) {
+            activeChar.sendMessage("SYS: Failed to consume the item.");
+            return;
+        }
+
+        final long now = System.currentTimeMillis();
+        long currentEnd = Math.max(now, HeroManager.getInstance().getHeroDuration(activeChar.getObjectId()));
+
+        // Add 7 days (7 * 24 * 60 * 60 * 1000 ms)
+        long additionalTime = HERO_DAYS * 24L * 60 * 60 * 1000;
+        long newEndTime = currentEnd + additionalTime;
+
+        // Apply Hero status
+        if (HeroManager.getInstance().hasHeroPrivileges(activeChar.getObjectId())) {
+            HeroManager.getInstance().updateHero(activeChar.getObjectId(), newEndTime);
+        } else {
+            HeroManager.getInstance().addHero(activeChar.getObjectId(), newEndTime);
+        }
+
+        // Show expiration time to the player
+        String formatted = new SimpleDateFormat("dd MMM, HH:mm").format(new Date(newEndTime));
+        String message = "Your Hero status will expire on " + formatted + ".";
+        activeChar.sendPacket(new ExShowScreenMessage(message, 10000));
+        activeChar.sendMessage("SYS: " + message);
+    }
+}
+
+package com.l2jmega.gameserver.handler.itemhandlers.hero;
+
+import com.l2jmega.gameserver.handler.IItemHandler;
+import com.l2jmega.gameserver.instancemanager.HeroManager;
+import com.l2jmega.gameserver.model.actor.Playable;
+import com.l2jmega.gameserver.model.actor.instance.Player;
+import com.l2jmega.gameserver.model.item.instance.ItemInstance;
+import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
+
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.logging.Logger;
+
+public class Hero15days implements IItemHandler {
+
+    protected static final Logger LOGGER = Logger.getLogger(Hero15days.class.getName());
+    private static final long HERO_DURATION_MS = 15L * 24 * 60 * 60 * 1000; // 15 days in milliseconds
+
+    @Override
+    public void useItem(Playable playable, ItemInstance item, boolean forceUse) {
+        if (!(playable instanceof Player))
+            return;
+
+        Player activeChar = (Player) playable;
+
+        if (activeChar.isOlympiadProtection() || activeChar.isInCombat() || activeChar.isInOlympiadMode() || activeChar.isDead()) {
+            activeChar.sendMessage("SYS: You cannot use this item right now.");
+            return;
+        }
+
+        if (activeChar.isHero()) {
+            activeChar.sendMessage("SYS: You already have Hero status.");
+            return;
+        }
+
+        // Consume the item
+        playable.destroyItem("Consume", item.getObjectId(), 1, null, false);
+
+        // Calculate new hero duration time
+        final long now = System.currentTimeMillis();
+        long currentEnd = Math.max(now, HeroManager.getInstance().getHeroDuration(activeChar.getObjectId()));
+        long newEndTime = currentEnd + HERO_DURATION_MS;
+
+        // Update or add hero time
+        if (HeroManager.getInstance().hasHeroPrivileges(activeChar.getObjectId())) {
+            HeroManager.getInstance().updateHero(activeChar.getObjectId(), newEndTime);
+        } else {
+            HeroManager.getInstance().addHero(activeChar.getObjectId(), newEndTime);
+        }
+
+        // Feedback to player
+        String formatted = new SimpleDateFormat("dd MMM, HH:mm").format(new Date(newEndTime));
+        activeChar.sendPacket(new ExShowScreenMessage("Your Hero status will expire on " + formatted + ".", 10000));
+        activeChar.sendMessage("Your Hero status will expire on " + formatted + ".");
+    }
+}
+
+
+package com.l2jmega.gameserver.handler.itemhandlers.hero;
+
+import com.l2jmega.gameserver.handler.IItemHandler;
+import com.l2jmega.gameserver.instancemanager.HeroManager;
+import com.l2jmega.gameserver.model.actor.Playable;
+import com.l2jmega.gameserver.model.actor.instance.Player;
+import com.l2jmega.gameserver.model.item.instance.ItemInstance;
+import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
+
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.logging.Logger;
+
+public class Hero30days implements IItemHandler {
+
+    protected static final Logger LOGGER = Logger.getLogger(Hero30days.class.getName());
+    private static final int HERO_DAYS = 30; // Duration in days
+
+    @Override
+    public void useItem(Playable playable, ItemInstance item, boolean forceUse) {
+        if (!(playable instanceof Player))
+            return;
+
+        Player activeChar = (Player) playable;
+
+        if (activeChar.isOlympiadProtection() || activeChar.isInCombat() || activeChar.isInOlympiadMode() || activeChar.isDead()) {
+            activeChar.sendMessage("SYS: You cannot use this item right now.");
+            return;
+        }
+
+        if (activeChar.isHero()) {
+            activeChar.sendMessage("SYS: You already have Hero status.");
+            return;
+        }
+
+        // Consume the item
+        playable.destroyItem("Consume", item.getObjectId(), 1, null, false);
+
+        final long now = System.currentTimeMillis();
+        long currentEnd = Math.max(now, HeroManager.getInstance().getHeroDuration(activeChar.getObjectId()));
+
+        // Add 30 days in milliseconds
+        long additionalTime = HERO_DAYS * 24L * 60 * 60 * 1000;
+        long newEndTime = currentEnd + additionalTime;
+
+        // Update or add Hero
+        if (HeroManager.getInstance().hasHeroPrivileges(activeChar.getObjectId())) {
+            HeroManager.getInstance().updateHero(activeChar.getObjectId(), newEndTime);
+        } else {
+            HeroManager.getInstance().addHero(activeChar.getObjectId(), newEndTime);
+        }
+
+        // Message to the player
+        String formatted = new SimpleDateFormat("dd MMM, HH:mm").format(new Date(newEndTime));
+        activeChar.sendPacket(new ExShowScreenMessage("Your Hero status will expire on " + formatted + ".", 10000));
+        activeChar.sendMessage("Your Hero status will expire on " + formatted + ".");
+    }
+}
+
+
+package com.l2jmega.gameserver.handler.itemhandlers.hero;
+
+import com.l2jmega.gameserver.handler.IItemHandler;
+import com.l2jmega.gameserver.instancemanager.HeroManager;
+import com.l2jmega.gameserver.model.actor.Playable;
+import com.l2jmega.gameserver.model.actor.instance.Player;
+import com.l2jmega.gameserver.model.item.instance.ItemInstance;
+import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
+
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.logging.Logger;
+
+public class Hero24h implements IItemHandler {
+
+    protected static final Logger LOGGER = Logger.getLogger(Hero24h.class.getName());
+    private static final long HERO_DURATION_MS = 24L * 60 * 60 * 1000; // 24 hours in milliseconds
+
+    @Override
+    public void useItem(Playable playable, ItemInstance item, boolean forceUse) {
+        if (!(playable instanceof Player)) {
+            return;
+        }
+
+        Player activeChar = (Player) playable;
+
+        if (activeChar.isOlympiadProtection() || activeChar.isInCombat() || activeChar.isInOlympiadMode() || activeChar.isDead()) {
+            activeChar.sendMessage("SYS: You cannot use this item right now.");
+            return;
+        }
+
+        if (activeChar.isHero()) {
+            activeChar.sendMessage("SYS: You already have Hero status.");
+            return;
+        }
+
+        // Consume the item
+        if (!playable.destroyItem("Consume", item.getObjectId(), 1, null, false)) {
+            activeChar.sendMessage("SYS: Failed to consume the item.");
+            return;
+        }
+
+        final long now = System.currentTimeMillis();
+        long currentEnd = Math.max(now, HeroManager.getInstance().getHeroDuration(activeChar.getObjectId()));
+        long newEndTime = currentEnd + HERO_DURATION_MS;
+
+        if (HeroManager.getInstance().hasHeroPrivileges(activeChar.getObjectId())) {
+            HeroManager.getInstance().updateHero(activeChar.getObjectId(), newEndTime);
+        } else {
+            HeroManager.getInstance().addHero(activeChar.getObjectId(), newEndTime);
+        }
+
+        // Message to the player
+        String formatted = new SimpleDateFormat("dd MMM, HH:mm").format(new Date(newEndTime));
+        String message = "Your Hero status will expire on " + formatted + ".";
+        activeChar.sendPacket(new ExShowScreenMessage(message, 10000));
+        activeChar.sendMessage("SYS: " + message);
+    }
+}
+
+
+package com.l2jmega.gameserver.instancemanager;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
+import java.util.logging.Logger;
+
+import com.l2jmega.commons.concurrent.ThreadPool;
+import com.l2jmega.L2DatabaseFactory;
+import com.l2jmega.gameserver.model.World;
+import com.l2jmega.gameserver.model.actor.instance.Player;
+import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
+
+/**
+ * @author rapfersan92
+ */
+public class HeroManager
+{
+    private static final Logger _log = Logger.getLogger(HeroManager.class.getName());
+
+    private final Map<Integer, Long> _heros;
+    protected final Map<Integer, Long> _herosTask;
+    private ScheduledFuture<?> _scheduler;
+
+    public static HeroManager getInstance()
+    {
+        return SingletonHolder._instance;
+    }
+
+    protected HeroManager()
+    {
+        _heros = new ConcurrentHashMap<>();
+        _herosTask = new ConcurrentHashMap<>();
+        _scheduler = ThreadPool.scheduleAtFixedRate(new HeroTask(), 1000, 1000);
+        load();
+    }
+
+    public void reload()
+    {
+        _heros.clear();
+        _herosTask.clear();
+        if (_scheduler != null)
+            _scheduler.cancel(true);
+        _scheduler = ThreadPool.scheduleAtFixedRate(new HeroTask(), 1000, 1000);
+        load();
+    }
+
+    public void load()
+    {
+        try (Connection con = L2DatabaseFactory.getInstance().getConnection())
+        {
+            PreparedStatement statement = con.prepareStatement("SELECT objectId, duration FROM character_hero ORDER BY objectId");
+            ResultSet rs = statement.executeQuery();
+            while (rs.next())
+                _heros.put(rs.getInt("objectId"), rs.getLong("duration"));
+            rs.close();
+            statement.close();
+        }
+        catch (Exception e)
+        {
+            _log.warning("Exception: HeroManager load: " + e.getMessage());
+        }
+
+        _log.info("HeroManager: Loaded " + _heros.size() + " characters with hero privileges.");
+    }
+
+//    public void addHero(int objectId, long duration)
+//    {
+//        _heros.put(objectId, duration);
+//        _herosTask.put(objectId, duration);
+//        addHeroPrivileges(objectId, true);
+//
+//        try (Connection con = L2DatabaseFactory.getInstance().getConnection())
+//        {
+//            PreparedStatement statement = con.prepareStatement("INSERT INTO character_hero (objectId, duration) VALUES (?, ?)");
+//            statement.setInt(1, objectId);
+//            statement.setLong(2, duration);
+//            statement.execute();
+//            statement.close();
+//        }
+//        catch (Exception e)
+//        {
+//            _log.warning("Exception: HeroManager addHero: " + e.getMessage());
+//        }
+//    }
+    public void addHero(int objectId, long duration)
+    {
+        if (_heros.containsKey(objectId)) {
+            // Se o herói já estiver registrado, atualize a duração
+            updateHero(objectId, duration);
+            return;
+        }
+        
+        _heros.put(objectId, duration);
+        _herosTask.put(objectId, duration);
+        addHeroPrivileges(objectId, true);
+
+        try (Connection con = L2DatabaseFactory.getInstance().getConnection()) {
+            // Verificar se o herói já existe no banco
+            try (PreparedStatement checkStmt = con.prepareStatement("SELECT objectId FROM character_hero WHERE objectId = ?")) {
+                checkStmt.setInt(1, objectId);
+                try (ResultSet rs = checkStmt.executeQuery()) {
+                    if (rs.next()) {
+                        // Se existir, atualize a duração
+                        try (PreparedStatement updateStmt = con.prepareStatement("UPDATE character_hero SET duration = ? WHERE objectId = ?")) {
+                            updateStmt.setLong(1, duration);
+                            updateStmt.setInt(2, objectId);
+                            updateStmt.execute();
+                        }
+                    } else {
+                        // Caso contrário, insira como novo
+                        try (PreparedStatement insertStmt = con.prepareStatement("INSERT INTO character_hero (objectId, duration) VALUES (?, ?)")) {
+                            insertStmt.setInt(1, objectId);
+                            insertStmt.setLong(2, duration);
+                            insertStmt.execute();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            _log.warning("Exception: HeroManager addHero: " + e.getMessage());
+        }
+    }
+
+
+    public void updateHero(int objectId, long duration)
+    {
+        _heros.put(objectId, duration);
+        _herosTask.put(objectId, duration);
+
+        // Envia uma mensagem ao jogador informando sobre a duração do Hero
+        final Player player = World.getInstance().getPlayer(objectId);
+        if (player != null)
+        {
+            player.sendMessage("Your Hero privileges are updated. You now have " + (duration - System.currentTimeMillis()) / 86400000 + " days left.");
+            player.broadcastUserInfo();
+        }
+
+        // Atualiza no banco
+        try (Connection con = L2DatabaseFactory.getInstance().getConnection())
+        {
+            PreparedStatement statement = con.prepareStatement("UPDATE character_hero SET duration = ? WHERE objectId = ?");
+            statement.setLong(1, duration);
+            statement.setInt(2, objectId);
+            statement.execute();
+            statement.close();
+        }
+        catch (Exception e)
+        {
+            _log.warning("Exception: HeroManager updateHero: " + e.getMessage());
+        }
+    }
+
+    public void removeHero(int objectId)
+    {
+        _heros.remove(objectId);
+        _herosTask.remove(objectId);
+        removeHeroPrivileges(objectId, false);
+
+        try (Connection con = L2DatabaseFactory.getInstance().getConnection())
+        {
+            PreparedStatement statement = con.prepareStatement("DELETE FROM character_hero WHERE objectId = ?");
+            statement.setInt(1, objectId);
+            statement.execute();
+            statement.close();
+        }
+        catch (Exception e)
+        {
+            _log.warning("Exception: HeroManager removeHero: " + e.getMessage());
+        }
+    }
+
+    public boolean hasHeroPrivileges(int objectId)
+    {
+        if (_heros.containsKey(objectId))
+        {
+            long heroEndTime = _heros.get(objectId);
+            return System.currentTimeMillis() < heroEndTime; // Verifica se o Hero ainda é válido
+        }
+        return false;
+    }
+
+    public long getHeroDuration(int objectId)
+    {
+        return _heros.getOrDefault(objectId, 0L);
+    }
+
+    public void addHeroTask(int objectId, long duration)
+    {
+        _herosTask.put(objectId, duration);
+    }
+
+    public void removeHeroTask(int objectId)
+    {
+        _herosTask.remove(objectId);
+    }
+
+    public void addHeroPrivileges(int objectId, boolean apply)
+    {
+        final Player player = World.getInstance().getPlayer(objectId);
+        if (player != null)
+        {
+            player.setHero(true);
+            player.setNoble(true, true);  // Definindo como nobre também, caso seja necessário
+            player.broadcastUserInfo();
+            player.addItem("Hero Item", 6842, 1, player, true); // Adiciona o item herói (exemplo 6842)
+        }
+    }
+
+    public void removeHeroPrivileges(int objectId, boolean apply)
+    {
+        final Player player = World.getInstance().getPlayer(objectId);
+        if (player != null)
+        {
+            player.setHero(false);
+            player.broadcastUserInfo();
+            player.getInventory().destroyItemByItemId("", 6842, 1, player, null); // Remove o item herói
+        }
+    }
+
+    public class HeroTask implements Runnable
+    {
+        @Override
+        public final void run()
+        {
+            if (_herosTask.isEmpty())
+                return;
+
+            for (Map.Entry<Integer, Long> entry : _herosTask.entrySet())
+            {
+                final long duration = entry.getValue();
+                if (System.currentTimeMillis() > duration)
+                {
+                    final int objectId = entry.getKey();
+                    removeHero(objectId);
+
+                    final Player player = World.getInstance().getPlayer(objectId);
+                    if (player != null)
+                    {
+                        player.sendPacket(new ExShowScreenMessage("Your Hero privileges were removed.", 10000));
+                        player.sendMessage("Your Hero privileges have expired.");
+                    }
+                }
+            }
+        }
+    }
+
+    private static class SingletonHolder
+    {
+        protected static final HeroManager _instance = new HeroManager();
+    }
+}
+
+
+
+
