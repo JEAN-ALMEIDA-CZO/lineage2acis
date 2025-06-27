@@ -1,0 +1,96 @@
+diff --git a/acis_public-master/aCis_gameserver/java/com/l2jmega/gameserver/model/actor/Player.java b/acis_public-master/aCis_gameserver/java/com/l2jmega/gameserver/model/actor/Player.java
+index 023516a..0fef0f9 100684
+--- a/acis_public-master/aCis_gameserver/java/com/l2jmega/gameserver/model/actor/Player.java
++++ b/acis_public-master/aCis_gameserver/java/com/l2jmega/gameserver/model/actor/Player.java
+	return randomlvl;
+	}
++
++   // Determina quais itens devem equipar com base na classe do personagem
++   public void equipItemsBasedOnClass() {
++       int[] itemIds;
++
++       switch (this.getClassId()) {
++       case WARRIOR:
++           itemIds = new int[] { 352, 2378, 2411, 2425, 2449, 2525, 881, 881, 850, 850, 913, 297, 1463, 728, 1539, 736,
++                   9612 };
++           break;
++       case KNIGHT:
++       case TEMPLE_KNIGHT:
++       case PALUS_KNIGHT:
++       case SCAVENGER:
++       case ARTISAN:
++           itemIds = new int[] { 352, 2378, 2411, 2425, 2449, 2499, 881, 881, 850, 850, 913, 2493, 159, 1463, 728,
++                   1539, 736, 9612 };
++           break;
++       case ROGUE:
++       case ELVEN_SCOUT:
++       case ASSASSIN:
++           itemIds = new int[] { 395, 417, 2424, 2448, 2412, 225, 881, 881, 850, 850, 913, 280, 1463, 728, 1539, 736,
++                   9612 };
++           break;
++       case HUMAN_WIZARD:
++       case CLERIC:
++       case ELVEN_WIZARD:
++       case ELVEN_ORACLE:
++       case DARK_WIZARD:
++       case SHILLIEN_ORACLE:
++       case ORC_SHAMAN:
++           itemIds = new int[] { 437, 470, 2450, 2426, 2412, 189, 881, 881, 850, 850, 913, 629, 1463, 728, 1539, 736,
++                   9613 };
++           break;
++       case ORC_RAIDER:
++           itemIds = new int[] { 352, 2378, 2411, 2425, 2449, 70, 881, 881, 850, 850, 913, 297, 1463, 728, 1539, 736,
++                   9612 };
++           break;
++       case MONK:
++           itemIds = new int[] { 395, 417, 2424, 2448, 2412, 262, 881, 881, 850, 850, 913, 1463, 728, 1539, 736,
++                   9612 };
++           break;
++       default:
++           // Classe não encontrada, sair
++           return;
++       }
++
++       equipItems(itemIds);
++
++       // Adicionar itens ao inventário
++       this.getInventory().addItem("Soul Shot Grade D", 1463, 2000, this, null);
++       this.getInventory().addItem("Spirit Shot Grade D", 3948, 2000, this, null);
++       this.getInventory().addItem("Mana Potion", 728, 200, this, null);
++       this.getInventory().addItem("Greater Healing Potion", 1539, 200, this, null);
++       this.getInventory().addItem("Scroll of Scape", 736, 5, this, null);
++   }
++
++   private void equipItems(int... itemIds) {
++       for (int itemId : itemIds) {
++           ItemInstance item = this.getInventory().addItem("Armor", itemId, 1, this, null);
++           // Verificar se o item pode ser equipado
++           if (item.getItem().getBodyPart() != 0) {
++               this.getInventory().equipItemAndRecord(item);
++           }
++       }
++
++       this.getInventory().updateDatabase();
++       this.sendPacket(new ItemList(this, true));
++       MagicSkillUse MSU = new MagicSkillUse(this, this, 2024, 1, 1, 0);
++       this.broadcastPacket(MSU);
++       setCurrentHpMp(getMaxHp(), getMaxMp());
++       setCurrentCp(getMaxCp());
++   }
+ }
+\ No newline at end of file
+diff --git a/acis_public-master/aCis_gameserver/java/com/l2jmega/gameserver/model/actor/instance/ClassMaster.java b/acis_public-master/aCis_gameserver/java/com/l2jmega/gameserver/model/actor/instance/ClassMaster.java
+index 766a843..36f3ee4 100644
+--- a/acis_public-master/aCis_gameserver/java/com/l2jmega/gameserver/model/actor/instance/ClassMaster.java
++++ b/acis_public-master/aCis_gameserver/java/com/l2jmega/gameserver/model/actor/instance/ClassMaster.java
+		{
+			showQuestionMark(player);
+		}
++
++       // After class change is successful, equip items based on class
++       player.equipItemsBasedOnClass();
++
+        return true;
+    }
+ 
+\ No newline at end of file
