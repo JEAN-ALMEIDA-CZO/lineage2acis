@@ -1,0 +1,238 @@
+### Eclipse Workspace Patch 1.0
+#P l2jmega_gameserver
+diff --git java/com/l2jmega/gameserver/GameServer.java java/com/l2jmega/gameserver/GameServer.java
+index 3f55474..1be729e 100644
+--- java/com/l2jmega/gameserver/GameServer.java
++++ java/com/l2jmega/gameserver/GameServer.java
+@@ -91,6 +91,7 @@
+ import com.l2jmega.gameserver.handler.VoicedCommandHandler;
+ import com.l2jmega.gameserver.idfactory.IdFactory;
+ import com.l2jmega.gameserver.model.World;
++import com.l2jmega.gameserver.model.actor.StatusRealTime;
+ import com.l2jmega.gameserver.model.entity.events.capturetheflag.CTFManager;
+ import com.l2jmega.gameserver.model.entity.events.deathmatch.DMManager;
+ import com.l2jmega.gameserver.model.entity.events.lastman.LMManager;
+@@ -319,6 +320,9 @@
+        StringUtil.printSection("Teleport Interface Location Data");
+        TeleportLocationData.getInstance();
+        
++       StringUtil.printSection("TargetStatus Interface");
++       StatusRealTime.getInstance();
++       
+        StringUtil.printSection("Handlers");
+        LOGGER.info("Loaded {} admin command handlers.", AdminCommandHandler.getInstance().size());
+        LOGGER.info("Loaded {} chat handlers.", ChatHandler.getInstance().size());
+diff --git java/com/l2jmega/gameserver/model/actor/StatusRealTime.java java/com/l2jmega/gameserver/model/actor/StatusRealTime.java
+new file mode 100644
+index 0000000..3f2004c
+--- /dev/null
++++ java/com/l2jmega/gameserver/model/actor/StatusRealTime.java
+@@ -0,0 +1,86 @@
++/*
++ * This program is free software: you can redistribute it and/or modify it under
++ * the terms of the GNU General Public License as published by the Free Software
++ * Foundation, either version 3 of the License, or (at your option) any later
++ * version.
++ * 
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
++ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
++ * details.
++ * 
++ * You should have received a copy of the GNU General Public License along with
++ * this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++package com.l2jmega.gameserver.model.actor;
++
++import java.util.Collection;
++import com.l2jmega.commons.pool.ThreadPool;
++
++import com.l2jmega.gameserver.model.World;
++import com.l2jmega.gameserver.model.actor.instance.Player;
++import com.l2jmega.gameserver.network.serverpackets.StatusUpdate;
++
++/**
++ * @author Sobek
++ */
++public class StatusRealTime
++{
++    public StatusRealTime()
++    {
++        ThreadPool.scheduleAtFixedRate(new LoadStatus(), 500, 500);
++    }
++    
++    public static StatusRealTime getInstance()
++    {
++        return SingletonHolder.INSTANCE;
++    }
++    
++    private static class SingletonHolder
++    {
++        protected static final StatusRealTime INSTANCE = new StatusRealTime();
++    }
++}
++
++class LoadStatus implements Runnable
++{
++    @Override
++    public void run()
++    {
++        try
++        {
++            Collection<Player> allPlayers = World.getInstance().getPlayers();
++            for (Player player : allPlayers)
++            {
++                try
++                {
++                    if (player != null && player.getTarget() != null && player.getTarget() instanceof Player)
++                    {
++                        Player target = (Player) player.getTarget();
++                        updateStatus(target, player);
++                    }
++                }
++                catch (Exception e)
++                {
++                    e.printStackTrace();
++                }
++            }
++        }
++        catch (Exception e)
++        {
++            e.printStackTrace();
++        }
++    }
++    
++    private static void updateStatus(Player _target, Player player)
++    {
++        StatusUpdate su = new StatusUpdate(_target);
++        su.addAttribute(StatusUpdate.CUR_HP, (int) _target.getCurrentHp());
++        su.addAttribute(StatusUpdate.CUR_CP, (int) _target.getCurrentCp());
++        su.addAttribute(StatusUpdate.MAX_HP, _target.getMaxHp());
++        su.addAttribute(StatusUpdate.MAX_CP, _target.getMaxCp());
++        player.sendPacket(su);
++    }
++}
+diff --git java/com/l2jmega/gameserver/network/serverpackets/StatusUpdate.java java/com/l2jmega/gameserver/network/serverpackets/StatusUpdate.java
+index dcae5f4..11381f4 100644
+--- java/com/l2jmega/gameserver/network/serverpackets/StatusUpdate.java
++++ java/com/l2jmega/gameserver/network/serverpackets/StatusUpdate.java
+@@ -5,11 +5,13 @@
+ import java.util.ArrayList;
+ import java.util.List;
+ 
++import com.l2jmega.gameserver.model.actor.instance.Player;
+ import com.l2jmega.gameserver.model.WorldObject;
+ import com.l2jmega.gameserver.model.holder.IntIntHolder;
+ 
+ /**
+  * format d d(dd)
++ * @author Sobek (adapted)
+  */
+ public class StatusUpdate extends L2GameServerPacket
+ {
+@@ -48,13 +50,17 @@
+     
+     private final int _objectId;
+     private final List<IntIntHolder> _attributes;
++    private Player _actor;
+     
+     public StatusUpdate(WorldObject object)
+     {
+         _attributes = new ArrayList<>();
+         _objectId = object.getObjectId();
++        if (object instanceof Player)
++            _actor = (Player) object;
+     }
+     
++    
+     public void addAttribute(int id, int level)
+     {
+         _attributes.add(new IntIntHolder(id, level));
+@@ -63,12 +69,83 @@
+     protected final void writeImpl()
+     {
+         writeC(0x0e);
+-        writeD(_objectId);
+-        writeD(_attributes.size());
+-        
+-        for (IntIntHolder temp : _attributes)
++        if (_actor != null)
+         {
+-            writeD(temp.getId());
+-            writeD(temp.getValue());
++            writeD(_actor.getObjectId());
++            writeD(28); // all the attributes
++            
++            writeD(LEVEL);
++            writeD(_actor.getLevel());
++            writeD(EXP);
++            writeD((int) _actor.getExp());
++            writeD(STR);
++            writeD(_actor.getSTR());
++            writeD(DEX);
++            writeD(_actor.getDEX());
++            writeD(CON);
++            writeD(_actor.getCON());
++            writeD(INT);
++            writeD(_actor.getINT());
++            writeD(WIT);
++            writeD(_actor.getWIT());
++            writeD(MEN);
++            writeD(_actor.getMEN());
++            
++            writeD(CUR_HP);
++            writeD((int) _actor.getCurrentHp());
++            writeD(MAX_HP);
++            writeD(_actor.getMaxHp());
++            writeD(CUR_MP);
++            writeD((int) _actor.getCurrentMp());
++            writeD(MAX_MP);
++            writeD(_actor.getMaxMp());
++            writeD(SP);
++            writeD(_actor.getSp());
++            writeD(CUR_LOAD);
++            writeD(_actor.getCurrentLoad());
++            writeD(MAX_LOAD);
++            writeD(_actor.getMaxLoad());
++            
++            writeD(P_ATK);
++            writeD(_actor.getPAtk(null));
++            writeD(ATK_SPD);
++            writeD(_actor.getPAtkSpd());
++            writeD(P_DEF);
++            writeD(_actor.getPDef(null));
++            writeD(EVASION);
++            writeD(_actor.getEvasionRate(null));
++            writeD(ACCURACY);
++            writeD(_actor.getAccuracy());
++            writeD(CRITICAL);
++            writeD(_actor.getCriticalHit(null, null));
++            writeD(M_ATK);
++            writeD(_actor.getMAtk(null, null));
++            
++            writeD(CAST_SPD);
++            writeD(_actor.getMAtkSpd());
++            writeD(M_DEF);
++            writeD(_actor.getMDef(null, null));
++            writeD(PVP_FLAG);
++            writeD(_actor.getPvpFlag());
++            writeD(KARMA);
++            writeD(_actor.getKarma());
++            writeD(CUR_CP);
++            writeD((int) _actor.getCurrentCp());
++            writeD(MAX_CP);
++            writeD(_actor.getMaxCp());
++        }
++        else
++        {
++            writeD(_objectId);
++            writeD(_attributes.size());
++            
++            for (IntIntHolder temp : _attributes)
++            {
++                writeD(temp.getId());
++                writeD(temp.getValue());
++            }
+         }
+     }
+ }
