@@ -149,7 +149,7 @@ import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
 
 /**
  * VIP de 30 dias - concede 30 dias exatos de VIP a partir do momento do uso.
- * @author MeGaPacK
+ * @author DarkDomi
  */
 public class Vip30days implements IItemHandler {
 
@@ -290,7 +290,7 @@ import com.l2jmega.gameserver.model.actor.instance.Player;
 import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
 
 /**
- * @author rapfersan92
+ * @author DarkDomi
  */
 public class VipManager
 {
@@ -794,7 +794,7 @@ import com.l2jmega.gameserver.model.actor.instance.Player;
 import com.l2jmega.gameserver.network.serverpackets.ExShowScreenMessage;
 
 /**
- * @author rapfersan92
+ * @author DarkDomi
  */
 public class HeroManager
 {
